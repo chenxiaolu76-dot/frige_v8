@@ -1,0 +1,9 @@
+model:
+  yolo:
+    weights_path: app/models/yolo/best.pt
+    confidence_threshold: 0.25
+    iou_threshold: 0.45
+    device: cpu
+
+paths:
+  sample_image: data/samples/sample_fridge.jpg

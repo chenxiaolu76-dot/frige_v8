@@ -1,0 +1,28 @@
+regions:
+  vertical:
+    - name: top
+      label_zh: 上层
+      y_min_ratio: 0.0
+      y_max_ratio: 0.33
+    - name: middle
+      label_zh: 中层
+      y_min_ratio: 0.33
+      y_max_ratio: 0.66
+    - name: bottom
+      label_zh: 下层
+      y_min_ratio: 0.66
+      y_max_ratio: 1.0
+
+  horizontal:
+    - name: left
+      label_zh: 左侧
+      x_min_ratio: 0.0
+      x_max_ratio: 0.33
+    - name: center
+      label_zh: 中间
+      x_min_ratio: 0.33
+      x_max_ratio: 0.66
+    - name: right
+      label_zh: 右侧
+      x_min_ratio: 0.66
+      x_max_ratio: 1.0
