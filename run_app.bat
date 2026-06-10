@@ -9,4 +9,4 @@ if not exist "%PYTHON_EXE%" (
 )
 
 cd /d "%~dp0"
-"%PYTHON_EXE%" -m streamlit run app\ui\streamlit_app.py
+"%PYTHON_EXE%" -m streamlit run app\ui\streamlit_app.py --server.fileWatcherType none

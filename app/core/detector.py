@@ -59,6 +59,27 @@ def load_model(config_path: str | Path = SYSTEM_CONFIG_PATH) -> YOLO:
     return YOLO(str(model_path))
 
 
+def load_model_from_weights(weights_path: str | Path) -> YOLO:
+    """
+    Load a YOLO model directly from a relative or absolute weights path.
+
+    Input:
+        weights_path: Relative path from project root or absolute path.
+
+    Output:
+        Loaded YOLO model instance.
+    """
+    model_path = Path(weights_path)
+    if not model_path.is_absolute():
+        model_path = (PROJECT_ROOT / model_path).resolve()
+
+    if not model_path.exists():
+        raise FileNotFoundError(f"YOLO weights not found: {model_path}")
+
+    torch.load = _patched_torch_load
+    return YOLO(str(model_path))
+
+
 def detect_food(
     image: Any,
     model: YOLO,

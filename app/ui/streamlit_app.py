@@ -13,7 +13,7 @@ PROJECT_ROOT = Path(__file__).resolve().parents[2]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.append(str(PROJECT_ROOT))
 
-from app.core.detector import count_food, detect_food, detections_to_dataframe, load_model  # noqa: E402
+from app.core.detector import count_food, detect_food, detections_to_dataframe, load_model_from_weights  # noqa: E402
 from app.core.area_estimator import estimate_all_areas  # noqa: E402
 from app.core.heatmap_generator import generate_heatmap_overlay  # noqa: E402
 from app.core.image_preprocess import (  # noqa: E402
@@ -47,12 +47,16 @@ from app.ui.components import (  # noqa: E402
 
 MAX_DISPLAY_WIDTH = 800
 LOGGER = get_logger(__name__)
+MODEL_OPTIONS = {
+    "当前 12 类新模型": "app/models/yolo/best.pt",
+    "之前的生鲜阶段模型": "智能冰箱/models/best_stage1.pt",
+}
 
 
 @st.cache_resource
-def get_detector_model():
-    """Load the YOLO model once for the Streamlit app."""
-    return load_model()
+def get_detector_model(weights_path: str):
+    """Load the selected YOLO model once for the Streamlit app."""
+    return load_model_from_weights(weights_path)
 
 
 def encode_image_to_png_bytes(image):
@@ -136,6 +140,8 @@ def main():
     run_preprocess = st.sidebar.checkbox("检测前启用预处理", value=True)
 
     st.sidebar.header("检测参数")
+    selected_model_label = st.sidebar.selectbox("检测模型", options=list(MODEL_OPTIONS.keys()), index=0)
+    st.sidebar.caption("如果整张冰箱图漏检严重，可先切到“之前的生鲜阶段模型”做对比测试。")
     use_raw_image_for_detection = st.sidebar.checkbox("检测时直接使用原图", value=True)
     detection_confidence = st.sidebar.slider("检测置信度阈值", 0.05, 0.50, 0.15, 0.01)
     detection_iou = st.sidebar.slider("NMS IoU 阈值", 0.10, 0.80, 0.45, 0.01)
@@ -214,7 +220,8 @@ def main():
         LOGGER.info("Preprocessing skipped.")
 
     try:
-        model = get_detector_model()
+        selected_model_path = MODEL_OPTIONS[selected_model_label]
+        model = get_detector_model(selected_model_path)
         LOGGER.info("YOLO model loaded successfully.")
     except FileNotFoundError as error:
         LOGGER.warning("YOLO weights not found: %s", error)
@@ -464,6 +471,7 @@ def main():
             st.dataframe(
                 pd.DataFrame(
                     [
+                        {"name": "检测模型", "value": selected_model_label},
                         {"name": "使用原图检测", "value": str(use_raw_image_for_detection)},
                         {"name": "置信度阈值", "value": f"{detection_confidence:.2f}"},
                         {"name": "IoU 阈值", "value": f"{detection_iou:.2f}"},
