@@ -83,6 +83,29 @@ def draw_detection_annotations(image: np.ndarray, area_df: pd.DataFrame) -> np.n
     return annotated
 
 
+def draw_raw_detections(image: np.ndarray, detections_df: pd.DataFrame) -> np.ndarray:
+    """Draw raw detection boxes and confidence scores on an image."""
+    annotated = image.copy()
+    if detections_df.empty:
+        return annotated
+
+    for _, row in detections_df.iterrows():
+        x1, y1, x2, y2 = map(int, [row["x1"], row["y1"], row["x2"], row["y2"]])
+        label = f'{row["class_name"]} | {row["confidence"]:.2f}'
+        cv2.rectangle(annotated, (x1, y1), (x2, y2), (255, 165, 0), 2)
+        cv2.putText(
+            annotated,
+            label,
+            (x1, max(20, y1 - 10)),
+            cv2.FONT_HERSHEY_SIMPLEX,
+            0.5,
+            (255, 165, 0),
+            1,
+            cv2.LINE_AA,
+        )
+    return annotated
+
+
 def dataframe_to_csv_bytes(dataframe: pd.DataFrame) -> bytes:
     """Convert a DataFrame to UTF-8 CSV bytes."""
     return dataframe.to_csv(index=False).encode("utf-8-sig")
@@ -111,6 +134,11 @@ def main():
     use_morphology = st.sidebar.checkbox("启用形态学处理", value=False)
     morph_kernel_size = st.sidebar.select_slider("形态学核大小", options=[3, 5, 7], value=3)
     run_preprocess = st.sidebar.checkbox("检测前启用预处理", value=True)
+
+    st.sidebar.header("检测参数")
+    use_raw_image_for_detection = st.sidebar.checkbox("检测时直接使用原图", value=True)
+    detection_confidence = st.sidebar.slider("检测置信度阈值", 0.05, 0.50, 0.15, 0.01)
+    detection_iou = st.sidebar.slider("NMS IoU 阈值", 0.10, 0.80, 0.45, 0.01)
 
     st.sidebar.header("结果展示")
     show_gray = st.sidebar.checkbox("显示灰度图", value=True)
@@ -198,7 +226,13 @@ def main():
         return
 
     try:
-        detections = detect_food(final_image, model)
+        detection_source = original_image if use_raw_image_for_detection else final_image
+        detections = detect_food(
+            detection_source,
+            model,
+            confidence_threshold=detection_confidence,
+            iou_threshold=detection_iou,
+        )
         detections_df = detections_to_dataframe(detections)
         LOGGER.info("Detection finished. Total detections: %s", len(detections_df))
     except Exception as error:
@@ -220,6 +254,7 @@ def main():
     restock_df = build_restock_suggestions(food_summary_df)
     space_advice_df = build_space_advice(occupancy_df, position_area_df)
     annotated_image = draw_detection_annotations(final_image, area_df) if not area_df.empty else final_image.copy()
+    raw_detection_image = draw_raw_detections(detection_source, detections_df)
     heatmap_image = generate_heatmap_overlay(final_image, position_df)
 
     LOGGER.info("Area estimation and position analysis completed.")
@@ -227,7 +262,6 @@ def main():
     detection_count = len(food_summary_df)
     total_items = int(food_summary_df["count"].sum()) if not food_summary_df.empty else 0
     total_area = float(food_summary_df["total_area_mm2"].sum()) if not food_summary_df.empty else 0.0
-    region_count = len(occupancy_df)
     restock_count = len(restock_df)
 
     render_section_header(
@@ -247,7 +281,7 @@ def main():
     with metric_cols[3]:
         render_metric_card("补货提示数", str(restock_count), "当前建议优先补充的食材类别数量。")
 
-    tabs = st.tabs(["图像总览", "统计分析", "空间布局", "管理建议", "结果导出"])
+    tabs = st.tabs(["图像总览", "统计分析", "空间布局", "管理建议", "调试", "结果导出"])
 
     with tabs[0]:
         render_section_header(
@@ -260,20 +294,20 @@ def main():
             st.markdown("原始图片")
             st.image(
                 bgr_to_rgb(resize_image_keep_ratio(original_image, max_width=MAX_DISPLAY_WIDTH)),
-                use_container_width=True,
+                use_column_width=True,
             )
         with image_cols[1]:
             st.markdown("预处理结果")
             st.image(
                 bgr_to_rgb(resize_image_keep_ratio(final_image, max_width=MAX_DISPLAY_WIDTH)),
-                use_container_width=True,
+                use_column_width=True,
                 clamp=True,
             )
         with image_cols[2]:
             st.markdown("检测标注图")
             st.image(
                 bgr_to_rgb(resize_image_keep_ratio(annotated_image, max_width=MAX_DISPLAY_WIDTH)),
-                use_container_width=True,
+                use_column_width=True,
             )
         close_panel()
 
@@ -282,19 +316,19 @@ def main():
             if show_gray and gray_image is not None:
                 with result_columns[0]:
                     st.markdown("灰度图")
-                    st.image(resize_image_keep_ratio(gray_image, max_width=MAX_DISPLAY_WIDTH), use_container_width=True, clamp=True)
+                    st.image(resize_image_keep_ratio(gray_image, max_width=MAX_DISPLAY_WIDTH), use_column_width=True, clamp=True)
             if show_denoised and denoised_image is not None:
                 with result_columns[1]:
                     st.markdown("去噪图")
-                    st.image(bgr_to_rgb(resize_image_keep_ratio(denoised_image, max_width=MAX_DISPLAY_WIDTH)), use_container_width=True)
+                    st.image(bgr_to_rgb(resize_image_keep_ratio(denoised_image, max_width=MAX_DISPLAY_WIDTH)), use_column_width=True)
             if show_edges and edge_image is not None:
                 with result_columns[2]:
                     st.markdown("边缘图")
-                    st.image(resize_image_keep_ratio(edge_image, max_width=MAX_DISPLAY_WIDTH), use_container_width=True, clamp=True)
+                    st.image(resize_image_keep_ratio(edge_image, max_width=MAX_DISPLAY_WIDTH), use_column_width=True, clamp=True)
             if show_morphology and morphology_image is not None:
                 with result_columns[3]:
                     st.markdown("形态学结果")
-                    st.image(resize_image_keep_ratio(morphology_image, max_width=MAX_DISPLAY_WIDTH), use_container_width=True, clamp=True)
+                    st.image(resize_image_keep_ratio(morphology_image, max_width=MAX_DISPLAY_WIDTH), use_column_width=True, clamp=True)
 
         with st.expander("原始检测表", expanded=False):
             st.dataframe(
@@ -360,7 +394,7 @@ def main():
         st.image(
             bgr_to_rgb(resize_image_keep_ratio(heatmap_image, max_width=MAX_DISPLAY_WIDTH)),
             caption="冰箱区域热力图",
-            use_container_width=True,
+            use_column_width=True,
         )
         close_panel()
 
@@ -410,6 +444,43 @@ def main():
 
     with tabs[4]:
         render_section_header(
+            "模型调试",
+            "查看原始检测框、置信度和阈值配置，便于排查漏检问题。",
+            badge="调试模式",
+            tone="neutral",
+        )
+        debug_cols = st.columns(2)
+        with debug_cols[0]:
+            open_panel()
+            st.markdown("原始检测图")
+            st.image(
+                bgr_to_rgb(resize_image_keep_ratio(raw_detection_image, max_width=MAX_DISPLAY_WIDTH)),
+                use_column_width=True,
+            )
+            close_panel()
+        with debug_cols[1]:
+            open_panel()
+            st.markdown("检测参数")
+            st.dataframe(
+                pd.DataFrame(
+                    [
+                        {"name": "使用原图检测", "value": str(use_raw_image_for_detection)},
+                        {"name": "置信度阈值", "value": f"{detection_confidence:.2f}"},
+                        {"name": "IoU 阈值", "value": f"{detection_iou:.2f}"},
+                        {"name": "预处理后检测", "value": str(not use_raw_image_for_detection)},
+                    ]
+                ),
+                use_container_width=True,
+            )
+            st.markdown("原始检测表")
+            st.dataframe(
+                detections_df[["class_name", "confidence", "x1", "y1", "x2", "y2", "center_x", "center_y"]],
+                use_container_width=True,
+            )
+            close_panel()
+
+    with tabs[5]:
+        render_section_header(
             "结果导出",
             "将图像和表格导出为答辩材料、实验记录或后续分析文件。"
         )
@@ -449,32 +520,41 @@ def main():
             )
             close_panel()
 
-    with st.expander("步骤拆解视图", expanded=False):
-        with st.expander("步骤 1：原始图与预处理结果", expanded=False):
-            st.image(
-                bgr_to_rgb(resize_image_keep_ratio(final_image, max_width=MAX_DISPLAY_WIDTH)),
-                caption="预处理后结果",
-                use_container_width=True,
-            )
-        with st.expander("步骤 2：YOLO 食材检测结果", expanded=False):
-            st.dataframe(
-                detections_df[["class_name", "confidence", "x1", "y1", "x2", "y2", "center_x", "center_y"]],
-                use_container_width=True,
-            )
-        with st.expander("步骤 3：数量统计与面积估算", expanded=False):
-            st.dataframe(food_summary_df, use_container_width=True)
-        with st.expander("步骤 4：位置分析与区域占用", expanded=False):
-            st.dataframe(position_area_df, use_container_width=True)
-        with st.expander("步骤 5：补货提醒与整理建议", expanded=False):
-            if not restock_df.empty:
-                st.dataframe(restock_df, use_container_width=True)
-            if not space_advice_df.empty:
-                st.dataframe(space_advice_df, use_container_width=True)
-        with st.expander("步骤 6：冰箱热力图", expanded=False):
-            st.image(
-                bgr_to_rgb(resize_image_keep_ratio(heatmap_image, max_width=MAX_DISPLAY_WIDTH)),
-                use_container_width=True,
-            )
+    st.markdown("### 步骤拆解视图")
+    with st.expander("步骤 1：原始图与预处理结果", expanded=False):
+        st.image(
+            bgr_to_rgb(resize_image_keep_ratio(final_image, max_width=MAX_DISPLAY_WIDTH)),
+            caption="预处理后结果",
+            use_column_width=True,
+        )
+    with st.expander("步骤 2：YOLO 食材检测结果", expanded=False):
+        st.dataframe(
+            detections_df[["class_name", "confidence", "x1", "y1", "x2", "y2", "center_x", "center_y"]],
+            use_container_width=True,
+        )
+    with st.expander("步骤 3：数量统计与面积估算", expanded=False):
+        st.dataframe(food_summary_df, use_container_width=True)
+    with st.expander("步骤 4：位置分析与区域占用", expanded=False):
+        st.dataframe(position_area_df, use_container_width=True)
+    with st.expander("步骤 5：补货提醒与整理建议", expanded=False):
+        if not restock_df.empty:
+            st.dataframe(restock_df, use_container_width=True)
+        if not space_advice_df.empty:
+            st.dataframe(space_advice_df, use_container_width=True)
+    with st.expander("步骤 6：模型调试与原始检测", expanded=False):
+        st.image(
+            bgr_to_rgb(resize_image_keep_ratio(raw_detection_image, max_width=MAX_DISPLAY_WIDTH)),
+            use_column_width=True,
+        )
+        st.dataframe(
+            detections_df[["class_name", "confidence", "x1", "y1", "x2", "y2", "center_x", "center_y"]],
+            use_container_width=True,
+        )
+    with st.expander("步骤 7：冰箱热力图", expanded=False):
+        st.image(
+            bgr_to_rgb(resize_image_keep_ratio(heatmap_image, max_width=MAX_DISPLAY_WIDTH)),
+            use_column_width=True,
+        )
 
     st.markdown("---")
     render_note("建议答辩时先展示“图像总览”，再切到“统计分析”“空间布局”和“管理建议”，最后用“结果导出”证明系统具备完整交付能力。")

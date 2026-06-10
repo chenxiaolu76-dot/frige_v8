@@ -63,6 +63,8 @@ def detect_food(
     image: Any,
     model: YOLO,
     config_path: str | Path = SYSTEM_CONFIG_PATH,
+    confidence_threshold: float | None = None,
+    iou_threshold: float | None = None,
 ) -> list[dict[str, Any]]:
     """
     Run YOLOv8 food detection on a preprocessed image.
@@ -80,8 +82,8 @@ def detect_food(
 
     results = model.predict(
         source=image,
-        conf=yolo_config.get("confidence_threshold", 0.25),
-        iou=yolo_config.get("iou_threshold", 0.45),
+        conf=confidence_threshold if confidence_threshold is not None else yolo_config.get("confidence_threshold", 0.25),
+        iou=iou_threshold if iou_threshold is not None else yolo_config.get("iou_threshold", 0.45),
         device=yolo_config.get("device", "cpu"),
         verbose=False,
     )

@@ -1,7 +1,7 @@
 model:
   yolo:
     weights_path: app/models/yolo/best.pt
-    confidence_threshold: 0.25
+    confidence_threshold: 0.15
     iou_threshold: 0.45
     device: cpu
 
