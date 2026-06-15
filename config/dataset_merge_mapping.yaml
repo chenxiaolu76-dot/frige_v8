@@ -1,0 +1,104 @@
+target_classes:
+  - apple
+  - banana
+  - orange
+  - tomato
+  - cucumber
+  - potato
+  - onion
+  - carrot
+  - green_pepper
+  - egg
+  - milk
+  - bread
+  - beverage
+  - bottled_condiment
+  - leafy_vegetable
+  - packaged_food
+
+datasets:
+  refrigerator_items:
+    description: >
+      冰箱真实场景主数据集。请在首次下载后，把 data.yaml 中 names 的实际类名
+      与下方 source_to_target 键名核对一遍；如果 Roboflow 导出类名略有差异，直接改这里即可。
+    source_to_target:
+      apple: apple
+      banana: banana
+      orange: orange
+      tomato: tomato
+      cucumber: cucumber
+      potato: potato
+      onion: onion
+      carrot: carrot
+      green_pepper: green_pepper
+      egg: egg
+      milk: milk
+      bread: bread
+      juice: beverage
+      beverage: beverage
+      drink: beverage
+      bottle: bottled_condiment
+      sauce: bottled_condiment
+      condiment: bottled_condiment
+      lettuce: leafy_vegetable
+      cabbage: leafy_vegetable
+      leafy_vegetable: leafy_vegetable
+      packaged_food: packaged_food
+      snack: packaged_food
+      container: packaged_food
+
+  fridge_objects:
+    description: >
+      冰箱场景补充数据集。这个数据集类通常更少，主要作用是补环境和构图，不要求覆盖全部 16 类。
+    source_to_target:
+      milk: milk
+      egg: egg
+      butter: packaged_food
+      juice: beverage
+      bottle: bottled_condiment
+      yogurt: packaged_food
+      fruit: packaged_food
+
+  grocery_store_products:
+    description: >
+      扩类辅助数据集，不建议整包原样训练。请优先保留和冰箱管理有关的饮料、包装食品、
+      调料、生鲜类目标，其余商品类可删除或映射到 packaged_food。
+    source_to_target:
+      apple: apple
+      banana: banana
+      orange: orange
+      tomato: tomato
+      cucumber: cucumber
+      potato: potato
+      onion: onion
+      carrot: carrot
+      pepper: green_pepper
+      green_pepper: green_pepper
+      egg: egg
+      milk: milk
+      bread: bread
+      juice: beverage
+      soda: beverage
+      drink: beverage
+      beverage: beverage
+      tea: beverage
+      coffee_drink: beverage
+      ketchup: bottled_condiment
+      sauce: bottled_condiment
+      dressing: bottled_condiment
+      soy_sauce: bottled_condiment
+      mayonnaise: bottled_condiment
+      lettuce: leafy_vegetable
+      cabbage: leafy_vegetable
+      spinach: leafy_vegetable
+      leafy_vegetable: leafy_vegetable
+      chips: packaged_food
+      biscuit: packaged_food
+      snack: packaged_food
+      instant_noodles: packaged_food
+      yogurt: packaged_food
+      cheese: packaged_food
+      butter: packaged_food
+      container: packaged_food
+      box_food: packaged_food
+

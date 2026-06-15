@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 from pathlib import Path
 import sys
 
@@ -7,6 +8,8 @@ import cv2
 import numpy as np
 import pandas as pd
 import streamlit as st
+
+logging.getLogger("streamlit.watcher.local_sources_watcher").setLevel(logging.ERROR)
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
@@ -48,8 +51,8 @@ from app.ui.components import (  # noqa: E402
 MAX_DISPLAY_WIDTH = 800
 LOGGER = get_logger(__name__)
 MODEL_OPTIONS = {
-    "当前 12 类新模型": "app/models/yolo/best.pt",
-    "之前的生鲜阶段模型": "智能冰箱/models/best_stage1.pt",
+    "当前 12 类新模型": "model/fridge_12class_best.pt",
+    "之前的生鲜阶段模型": "model/fresh_stage1_best.pt",
 }
 
 

@@ -1,0 +1,50 @@
+classes:
+  - id: 0
+    name: apple
+    label_zh: 苹果
+  - id: 1
+    name: banana
+    label_zh: 香蕉
+  - id: 2
+    name: orange
+    label_zh: 橙子
+  - id: 3
+    name: tomato
+    label_zh: 西红柿
+  - id: 4
+    name: cucumber
+    label_zh: 黄瓜
+  - id: 5
+    name: potato
+    label_zh: 土豆
+  - id: 6
+    name: onion
+    label_zh: 洋葱
+  - id: 7
+    name: carrot
+    label_zh: 胡萝卜
+  - id: 8
+    name: green_pepper
+    label_zh: 青椒
+  - id: 9
+    name: egg
+    label_zh: 鸡蛋
+  - id: 10
+    name: milk
+    label_zh: 牛奶
+  - id: 11
+    name: bread
+    label_zh: 面包
+  - id: 12
+    name: beverage
+    label_zh: 饮料
+  - id: 13
+    name: bottled_condiment
+    label_zh: 瓶装调料
+  - id: 14
+    name: leafy_vegetable
+    label_zh: 叶菜类
+  - id: 15
+    name: packaged_food
+    label_zh: 包装食品
+
