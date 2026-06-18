@@ -1,5 +1,7 @@
 # 智能冰箱视觉管理系统
 
+> **GitHub**: [https://github.com/chenxiaolu76-dot/frige_v8](https://github.com/chenxiaolu76-dot/frige_v8)
+
 基于数字图像处理与 YOLOv8 的课程期末项目，面向“冰箱食材管理”这一明确生活场景，交付一套可运行的图像处理系统 App。系统以冰箱内部照片为输入，完成图像预处理、食材检测、数量统计、面积估算、空间定位、热力图分析，并进一步输出补货提醒与空间整理建议。
 
 ## 项目定位
