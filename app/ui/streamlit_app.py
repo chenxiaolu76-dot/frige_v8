@@ -119,7 +119,11 @@ def dataframe_to_csv_bytes(dataframe: pd.DataFrame) -> bytes:
 
 
 def main():
-    st.set_page_config(page_title="Smart Fridge Vision", layout="wide")
+    st.set_page_config(
+        page_title="SmartFridge",
+        page_icon="⟡",
+        layout="wide"
+    )
     inject_global_styles()
     render_hero()
 
@@ -569,6 +573,16 @@ def main():
 
     st.markdown("---")
     render_note("建议答辩时先展示“图像总览”，再切到“统计分析”“空间布局”和“管理建议”，最后用“结果导出”证明系统具备完整交付能力。")
+
+    # ========== 精致页脚 ==========
+    st.markdown(
+        """
+        <div style="text-align: center; padding: 1.5rem 0 0.5rem 0; color: var(--muted); font-size: 0.8rem; opacity: 0.6;">
+            <span>⟡ 数字图像课程期末项目 · SmartFridge · 基于 YOLOv8</span>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
 
 
 if __name__ == "__main__":

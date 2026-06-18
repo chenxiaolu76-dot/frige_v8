@@ -6,4 +6,5 @@ model:
     device: cpu
 
 paths:
-  sample_image: data/samples/sample_fridge.jpg
+  sample_image: data/samples/sample_fridge.png
+
