@@ -18,7 +18,7 @@ if str(PROJECT_ROOT) not in sys.path:
 
 from app.core.detector import count_food, detect_food, detections_to_dataframe, load_model_from_weights  # noqa: E402
 from app.core.area_estimator import estimate_all_areas  # noqa: E402
-from app.core.heatmap_generator import generate_heatmap_overlay  # noqa: E402
+from app.core.heatmap_generator import generate_heatmap_overlay, generate_standalone_heatmap  # noqa: E402
 from app.core.image_preprocess import (  # noqa: E402
     convert_gray,
     edge_detection,
@@ -270,6 +270,14 @@ def main():
     annotated_image = draw_detection_annotations(final_image, area_df) if not area_df.empty else final_image.copy()
     raw_detection_image = draw_raw_detections(detection_source, detections_df)
     heatmap_image = generate_heatmap_overlay(final_image, position_df)
+    standalone_heatmap = generate_standalone_heatmap(
+        position_df,
+        image_shape=final_image.shape[:2],
+        confidence_exponent=1.5,
+        blur_sigma=35,
+        draw_colorbar=True,
+        draw_labels=True,
+    )
 
     LOGGER.info("Area estimation and position analysis completed.")
 
@@ -404,10 +412,19 @@ def main():
             close_panel()
 
         open_panel()
-        st.markdown("冰箱热力图")
+        st.markdown("冰箱热力图（原图叠加）")
         st.image(
             bgr_to_rgb(resize_image_keep_ratio(heatmap_image, max_width=MAX_DISPLAY_WIDTH)),
-            caption="冰箱区域热力图",
+            caption="原图叠加热力图",
+            use_column_width=True,
+        )
+        close_panel()
+
+        open_panel()
+        st.markdown("冰箱热辐射图（独立热力图）")
+        st.image(
+            bgr_to_rgb(resize_image_keep_ratio(standalone_heatmap, max_width=MAX_DISPLAY_WIDTH)),
+            caption="热辐射独立热力图 — 每个热源对应一个检测物，亮度代表置信度",
             use_column_width=True,
         )
         close_panel()
@@ -527,9 +544,16 @@ def main():
                 use_container_width=True,
             )
             st.download_button(
-                label="导出热力图 PNG",
+                label="导出热力图（原图叠加）PNG",
                 data=encode_image_to_png_bytes(heatmap_image),
-                file_name="fridge_heatmap.png",
+                file_name="fridge_heatmap_overlay.png",
+                mime="image/png",
+                use_container_width=True,
+            )
+            st.download_button(
+                label="导出热辐射图（独立热力图）PNG",
+                data=encode_image_to_png_bytes(standalone_heatmap),
+                file_name="fridge_thermal_heatmap.png",
                 mime="image/png",
                 use_container_width=True,
             )
