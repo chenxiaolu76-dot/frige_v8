@@ -18,14 +18,22 @@ photo/
 partner_bundle/
 *.zip
 
-data/outputs/
-data/raw/
-data/processed/
+data/
+docs/
+.claude/
+
+# 答辩相关文件
+模板.pptx
+答辩PPT逐页文案.md
+答辩ppt*.pptx
+项目答辩代码与设计讲解.md
 
 *.pt
 !app/models/yolo/best.pt
 !model/*.pt
 
+*.pptx
+*.ppt
 *.png
 *.jpg
 *.jpeg
