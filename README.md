@@ -53,14 +53,19 @@
 
 12 类模型的训练数据来自以下公开数据集的组合：
 
-| 数据集 | 来源 | 覆盖类别 | 说明 |
-|--------|------|----------|------|
-| **LVIS Fruits & Vegetables** | [GitHub](https://github.com/henningheyen/Fruits-And-Vegetables-Detection-Dataset) | apple, banana, orange, tomato, cucumber, potato, onion, carrot, green_pepper | 9 类果蔬检测数据集，从 LVIS 数据集过滤出果蔬子集，约 8,221 张图片，已转为 YOLO 格式 |
-| **Refrigerator Items**（冰箱真实场景主数据集） | [Roboflow Universe](https://universe.roboflow.com) | 覆盖全部 12 类及更多冰箱食材 | 真实冰箱场景数据集，包含堆叠、遮挡、多目标等复杂场景 |
-| **Fridge Objects**（冰箱场景补充数据集） | [Roboflow Universe](https://universe.roboflow.com) | milk, egg 等常见冰箱食材 | 补充冰箱环境多样性，提供货架、冷光等背景分布 |
-| **Grocery Store Products**（扩类辅助数据集） | [Roboflow Universe](https://universe.roboflow.com) | 覆盖全部 12 类的商品货架图 | 超市货架场景数据，用于改善类别覆盖和泛化能力 |
+| 阶段 | 数据集 | 来源 | 覆盖类别 | 数据规模 |
+|------|--------|------|----------|----------|
+| **Stage 1** | **LVIS Fruits & Vegetables**（果蔬检测子集） | [GitHub](https://github.com/henningheyen/Fruits-And-Vegetables-Detection-Dataset) | apple, banana, orange, tomato, cucumber, potato, onion, carrot, green_pepper | 训练 4,869 / 验证 1,055 / 测试 91 |
+| **Stage 2** | **LVIS Fruits & Vegetables** + **Refrigerator Contents**（冰箱内容物数据集） | LVIS: 同上 · Refrigerator: [Kaggle](https://www.kaggle.com/datasets/surendraallam/refrigerator-contents) | 全部 12 类（新增 egg, milk, bread） | 训练 5,670 / 验证 1,156 / 测试 192 |
 
-> 三个 Roboflow 数据集可通过 [Roboflow Universe](https://universe.roboflow.com) 搜索 "refrigerator food detection"、"fridge items" 等关键词找到。下载 YOLOv8 格式后，运行 `scripts/merge_roboflow_yolo_datasets.py` 即可合并为统一训练集。详细说明见 `docs/dataset_merge_plan.md`。
+12 类模型采用**两阶段训练策略**：第一阶段在 9 类 LVIS 果蔬数据上预训练得到 `best_stage1.pt`；第二阶段合并 Refrigerator Contents 数据集（含 egg、milk、bread 等冰箱场景图片）进行微调，最终产出 `fridge_12class_best.pt`。
+
+两个数据集的详细信息：
+
+- **LVIS Fruits & Vegetables**：从 LVIS 大规模实例分割数据集中过滤出果蔬子集，转为 YOLO 格式。共 8,221 张图片，涵盖 9 类常见果蔬。该仓库同时提供了 YOLOv8 微调基线模型。
+- **Refrigerator Contents**（[Kaggle](https://www.kaggle.com/datasets/surendraallam/refrigerator-contents)）：7 个冰箱常见食材类别（Banana、Bread、Eggs、Milk、Potato、Spinach、Tomato），每类约 150 张图片，~1,050 张总计。原始标注为 Caffe 格式，经转换为 Pascal VOC 后再转为 YOLO 格式。合并时排除了 Spinach 类别。
+
+> 合并过程记录在 `smart-fridge-final-train-bundle/data/merged_12class_yolo/merge_report.yaml` 中。训练脚本见 `smart-fridge-final-train-bundle/scripts/train_stage2_yolo.py`。
 
 系统输出每个目标的类别、置信度、边界框和中心点，可直接用于定位与后续分析。
 
