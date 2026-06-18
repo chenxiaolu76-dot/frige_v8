@@ -58,7 +58,10 @@
 | **Stage 1** | **LVIS Fruits & Vegetables**（果蔬检测子集） | [GitHub](https://github.com/henningheyen/Fruits-And-Vegetables-Detection-Dataset) | apple, banana, orange, tomato, cucumber, potato, onion, carrot, green_pepper | 训练 4,869 / 验证 1,055 / 测试 91 |
 | **Stage 2** | **LVIS Fruits & Vegetables** + **Refrigerator Contents**（冰箱内容物数据集） | LVIS: 同上 · Refrigerator: [Kaggle](https://www.kaggle.com/datasets/surendraallam/refrigerator-contents) | 全部 12 类（新增 egg, milk, bread） | 训练 5,670 / 验证 1,156 / 测试 192 |
 
-12 类模型采用**两阶段训练策略**：第一阶段在 9 类 LVIS 果蔬数据上预训练得到 `best_stage1.pt`；第二阶段合并 Refrigerator Contents 数据集（含 egg、milk、bread 等冰箱场景图片）进行微调，最终产出 `fridge_12class_best.pt`。
+项目包含两个模型权重，对应不同的训练阶段：
+
+- **`model/fresh_stage1_best.pt`**（9 类第一版模型）：仅使用 Stage 1 的 LVIS Fruits & Vegetables 数据集训练，覆盖 9 类果蔬（apple ~ green_pepper），是第一阶段的初始模型。
+- **`model/fridge_12class_best.pt`**（12 类当前模型）：采用**两阶段训练策略**——先加载 Stage 1 的预训练权重 `best_stage1.pt`，再合并 Refrigerator Contents 数据集（含 egg、milk、bread 等冰箱场景图片）进行微调，最终产出 12 类模型。
 
 两个数据集的详细信息：
 
