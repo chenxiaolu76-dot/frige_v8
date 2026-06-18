@@ -2,7 +2,7 @@
 
 > **GitHub**: [https://github.com/chenxiaolu76-dot/frige_v8](https://github.com/chenxiaolu76-dot/frige_v8)
 
-基于数字图像处理与 YOLOv8 的课程期末项目，面向“冰箱食材管理”这一明确生活场景，交付一套可运行的图像处理系统 App。系统以冰箱内部照片为输入，完成图像预处理、食材检测、数量统计、面积估算、空间定位、热力图分析，并进一步输出补货提醒与空间整理建议。
+基于数字图像处理与 YOLOv8 的课程期末项目，面向”冰箱食材管理”这一明确生活场景，交付一套可运行的图像处理系统 App。系统以冰箱内部照片为输入，完成图像预处理、食材检测、数量统计、面积估算、空间定位、冰箱布局图分析，并进一步输出补货提醒与空间整理建议。
 
 ## 项目定位
 
@@ -15,7 +15,7 @@
 本项目选择的实际场景是“家庭智能冰箱食材管理”，当前已经落地的应用功能包括：
 
 1. 食材识别与库存统计。
-2. 食材位置分析与冰箱区域热力图。
+2. 食材位置分析与冰箱布局图。
 3. 补货提醒。
 4. 空间整理建议。
 
@@ -70,7 +70,7 @@
 - **LVIS Fruits & Vegetables**：从 LVIS 大规模实例分割数据集中过滤出果蔬子集，转为 YOLO 格式。共 8,221 张图片，涵盖 9 类常见果蔬。该仓库同时提供了 YOLOv8 微调基线模型。
 - **Refrigerator Contents**（[Kaggle](https://www.kaggle.com/datasets/surendraallam/refrigerator-contents)）：7 个冰箱常见食材类别（Banana、Bread、Eggs、Milk、Potato、Spinach、Tomato），每类约 150 张图片，~1,050 张总计。原始标注为 Caffe 格式，经转换为 Pascal VOC 后再转为 YOLO 格式。合并时排除了 Spinach 类别。
 
-> 合并过程记录在 `smart-fridge-final-train-bundle/data/merged_12class_yolo/merge_report.yaml` 中。训练脚本见 `smart-fridge-final-train-bundle/scripts/train_stage2_yolo.py`。
+> 合并过程记录在 `smart-fridge-final-train-bundle/data/merged_12class_yolo/merge_report.yaml` 中（该目录为独立训练包，未包含在此仓库中）。
 
 系统输出每个目标的类别、置信度、边界框和中心点，可直接用于定位与后续分析。
 
@@ -84,7 +84,7 @@
 
 1. 库存清单生成：统计每类食材数量与面积。
 2. 区域位置分析：判断食材位于上层/中层/下层、左侧/中间/右侧。
-3. 热力图可视化：展示食材在冰箱中的集中区域。
+3. 冰箱布局图：在冰箱框架图中标注食材分布位置与数量。
 4. 补货提醒：依据默认库存阈值提示需要优先补充的食材。
 5. 空间整理建议：依据区域拥挤程度和面积集中情况给出整理建议。
 
@@ -106,28 +106,19 @@
 smart-fridge-vision/
 ├─ README.md
 ├─ requirements.txt
+├─ run_app.bat
+├─ .gitignore
+├─ .streamlit/
+│  └─ config.toml
 ├─ app/
-│  ├─ main.py
-│  ├─ core/
-│  ├─ ui/
-│  ├─ utils/
-│  └─ models/
-├─ config/
-├─ data/
-├─ docs/
-├─ scripts/
-├─ tests/
-├─ train_bundle/
-└─ 智能冰箱/
+│  ├─ core/          # 预处理、检测、面积估算、位置分析、布局图与库存管理
+│  ├─ ui/            # Streamlit App 界面
+│  └─ utils/         # 配置加载、图片 I/O、日志
+├─ config/           # 系统参数、类别映射、冰箱区域划分
+├─ model/            # YOLOv8 模型权重
+├─ scripts/          # 训练与数据准备脚本
+└─ tests/            # 关键模块测试
 ```
-
-核心目录说明：
-
-1. `app/core/`：预处理、检测、面积估算、位置分析、热力图与库存管理核心逻辑。
-2. `app/ui/`：Streamlit App 界面。
-3. `config/`：系统参数、类别映射、冰箱区域划分。
-4. `tests/`：关键模块测试。
-5. `智能冰箱/`：新训练模型与训练记录。
 
 ## 运行方法
 
@@ -135,19 +126,19 @@ smart-fridge-vision/
 
 ```powershell
 conda activate D:\conda-envs\smart-fridge-vision-py311
-cd D:\learn\数字图像处理\smart-fridge-vision
+cd 项目所在目录
 streamlit run app\ui\streamlit_app.py
 ```
 
+或直接双击 `run_app.bat`。
+
 ## 测试状态
 
-当前核心模块测试已通过：
+当前核心模块测试已通过（17 passed）：
 
-1. 面积估算测试。
-2. 位置分析测试。
-3. 图像预处理测试。
-
-在 `D:\conda-envs\smart-fridge-vision-py311` 环境中运行结果为 `17 passed`。
+```powershell
+pytest tests\
+```
 
 ## 答辩时建议如何介绍
 
@@ -155,8 +146,8 @@ streamlit run app\ui\streamlit_app.py
 
 1. 本项目首先完成了数字图像处理的基础功能。
 2. 在此基础上引入 YOLOv8，实现了食材目标检测与定位，满足任务 1 的增强要求。
-3. 然后把检测结果放进真实应用场景“智能冰箱管理”中，继续做库存统计、面积估算、空间定位和热力图分析。
-4. 最后进一步输出补货提醒和整理建议，使系统从“会识别”升级为“能辅助管理”。
+3. 然后把检测结果放进真实应用场景”智能冰箱管理”中，继续做库存统计、面积估算、空间定位和冰箱布局图分析。
+4. 最后进一步输出补货提醒和整理建议，使系统从”会识别”升级为”能辅助管理”。
 
 ## 后续可扩展方向
 
