@@ -32,7 +32,9 @@
 
 ### 2. 目标检测与定位
 
-系统使用 YOLOv8 食材检测模型，当前已接入 12 类新训练权重：
+系统使用 YOLOv8 食材检测模型，当前已接入 12 类新训练权重（`model/fridge_12class_best.pt`）：
+
+> **数据集来源说明**: 12 类模型的训练数据来自以下公开数据集的组合，覆盖了冰箱常见食材场景。
 
 1. apple
 2. banana
@@ -46,6 +48,19 @@
 10. egg
 11. milk
 12. bread
+
+#### 📦 数据集来源
+
+12 类模型的训练数据来自以下公开数据集的组合：
+
+| 数据集 | 来源 | 覆盖类别 | 说明 |
+|--------|------|----------|------|
+| **LVIS Fruits & Vegetables** | [GitHub](https://github.com/henningheyen/Fruits-And-Vegetables-Detection-Dataset) | apple, banana, orange, tomato, cucumber, potato, onion, carrot, green_pepper | 9 类果蔬检测数据集，从 LVIS 数据集过滤出果蔬子集，约 8,221 张图片，已转为 YOLO 格式 |
+| **Refrigerator Items**（冰箱真实场景主数据集） | [Roboflow Universe](https://universe.roboflow.com) | 覆盖全部 12 类及更多冰箱食材 | 真实冰箱场景数据集，包含堆叠、遮挡、多目标等复杂场景 |
+| **Fridge Objects**（冰箱场景补充数据集） | [Roboflow Universe](https://universe.roboflow.com) | milk, egg 等常见冰箱食材 | 补充冰箱环境多样性，提供货架、冷光等背景分布 |
+| **Grocery Store Products**（扩类辅助数据集） | [Roboflow Universe](https://universe.roboflow.com) | 覆盖全部 12 类的商品货架图 | 超市货架场景数据，用于改善类别覆盖和泛化能力 |
+
+> 三个 Roboflow 数据集可通过 [Roboflow Universe](https://universe.roboflow.com) 搜索 "refrigerator food detection"、"fridge items" 等关键词找到。下载 YOLOv8 格式后，运行 `scripts/merge_roboflow_yolo_datasets.py` 即可合并为统一训练集。详细说明见 `docs/dataset_merge_plan.md`。
 
 系统输出每个目标的类别、置信度、边界框和中心点，可直接用于定位与后续分析。
 
