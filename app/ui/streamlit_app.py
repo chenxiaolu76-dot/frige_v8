@@ -16,16 +16,14 @@ PROJECT_ROOT = Path(__file__).resolve().parents[2]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.append(str(PROJECT_ROOT))
 
-from app.core.detector import count_food, detect_food, detections_to_dataframe, load_model_from_weights  # noqa: E402
+from app.core.detector import detect_food, detections_to_dataframe, load_model_from_weights  # noqa: E402
 from app.core.area_estimator import estimate_all_areas  # noqa: E402
-from app.core.heatmap_generator import generate_heatmap_overlay, generate_fridge_layout_chart  # noqa: E402
+from app.core.heatmap_generator import generate_fridge_layout_chart  # noqa: E402
 from app.core.image_preprocess import (  # noqa: E402
     convert_gray,
     edge_detection,
     enhance_contrast,
-    load_image,
     morphological_process,
-    preprocess_pipeline,
     remove_noise,
 )
 from app.core.inventory_manager import (  # noqa: E402
@@ -210,21 +208,7 @@ def main():
         )
         working_image = morphology_image.copy()
 
-    if run_preprocess:
-        pipeline_results = preprocess_pipeline(
-            original_image,
-            use_gray=use_gray,
-            use_contrast=use_contrast,
-            use_denoise=use_denoise,
-            use_edge=use_edge,
-            use_morphology=use_morphology,
-        )
-        final_image = working_image
-        LOGGER.info("Preprocessing pipeline executed.")
-    else:
-        pipeline_results = {"original": original_image, "final": original_image}
-        final_image = original_image
-        LOGGER.info("Preprocessing skipped.")
+    final_image = working_image if run_preprocess else original_image
 
     try:
         selected_model_path = MODEL_OPTIONS[selected_model_label]
@@ -259,9 +243,9 @@ def main():
         st.info("当前图片未检测到食材目标。")
         return
 
-    image_height, image_width = final_image.shape[:2]
+    image_width = final_image.shape[1]
     area_df, conversion_info = estimate_all_areas(detections_df)
-    position_df = analyze_all_positions(detections_df, image_width=image_width, image_height=image_height)
+    position_df = analyze_all_positions(detections_df, image_width=image_width, image_height=final_image.shape[0])
     occupancy_df = count_region_occupancy(position_df)
     food_summary_df = build_food_summary(detections_df, area_df)
     position_area_df = build_position_area_summary(position_df, area_df)
@@ -269,7 +253,6 @@ def main():
     space_advice_df = build_space_advice(occupancy_df, position_area_df)
     annotated_image = draw_detection_annotations(final_image, area_df) if not area_df.empty else final_image.copy()
     raw_detection_image = draw_raw_detections(detection_source, detections_df)
-    heatmap_image = generate_heatmap_overlay(final_image, position_df)
     fridge_layout = generate_fridge_layout_chart(
         detections_df=position_df,
         image_shape=(max(600, final_image.shape[1]), max(750, int(final_image.shape[0] * 1.2))),
@@ -408,15 +391,6 @@ def main():
             close_panel()
 
         open_panel()
-        st.markdown("冰箱热力图（原图叠加）")
-        st.image(
-            bgr_to_rgb(resize_image_keep_ratio(heatmap_image, max_width=MAX_DISPLAY_WIDTH)),
-            caption="原图叠加热力图",
-            use_column_width=True,
-        )
-        close_panel()
-
-        open_panel()
         st.markdown("冰箱布局图（食材名称 + 数量分布）")
         st.image(
             bgr_to_rgb(resize_image_keep_ratio(fridge_layout, max_width=MAX_DISPLAY_WIDTH)),
@@ -540,13 +514,6 @@ def main():
                 use_container_width=True,
             )
             st.download_button(
-                label="导出热力图（原图叠加）PNG",
-                data=encode_image_to_png_bytes(heatmap_image),
-                file_name="fridge_heatmap_overlay.png",
-                mime="image/png",
-                use_container_width=True,
-            )
-            st.download_button(
                 label="导出冰箱布局图（食材分布）PNG",
                 data=encode_image_to_png_bytes(fridge_layout),
                 file_name="fridge_layout_chart.png",
@@ -554,42 +521,6 @@ def main():
                 use_container_width=True,
             )
             close_panel()
-
-    st.markdown("### 步骤拆解视图")
-    with st.expander("步骤 1：原始图与预处理结果", expanded=False):
-        st.image(
-            bgr_to_rgb(resize_image_keep_ratio(final_image, max_width=MAX_DISPLAY_WIDTH)),
-            caption="预处理后结果",
-            use_column_width=True,
-        )
-    with st.expander("步骤 2：YOLO 食材检测结果", expanded=False):
-        st.dataframe(
-            detections_df[["class_name", "confidence", "x1", "y1", "x2", "y2", "center_x", "center_y"]],
-            use_container_width=True,
-        )
-    with st.expander("步骤 3：数量统计与面积估算", expanded=False):
-        st.dataframe(food_summary_df, use_container_width=True)
-    with st.expander("步骤 4：位置分析与区域占用", expanded=False):
-        st.dataframe(position_area_df, use_container_width=True)
-    with st.expander("步骤 5：补货提醒与整理建议", expanded=False):
-        if not restock_df.empty:
-            st.dataframe(restock_df, use_container_width=True)
-        if not space_advice_df.empty:
-            st.dataframe(space_advice_df, use_container_width=True)
-    with st.expander("步骤 6：模型调试与原始检测", expanded=False):
-        st.image(
-            bgr_to_rgb(resize_image_keep_ratio(raw_detection_image, max_width=MAX_DISPLAY_WIDTH)),
-            use_column_width=True,
-        )
-        st.dataframe(
-            detections_df[["class_name", "confidence", "x1", "y1", "x2", "y2", "center_x", "center_y"]],
-            use_container_width=True,
-        )
-    with st.expander("步骤 7：冰箱热力图", expanded=False):
-        st.image(
-            bgr_to_rgb(resize_image_keep_ratio(heatmap_image, max_width=MAX_DISPLAY_WIDTH)),
-            use_column_width=True,
-        )
 
     st.markdown("---")
     render_note("建议答辩时先展示“图像总览”，再切到“统计分析”“空间布局”和“管理建议”，最后用“结果导出”证明系统具备完整交付能力。")
