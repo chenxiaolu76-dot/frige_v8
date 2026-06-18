@@ -203,6 +203,205 @@ def generate_categorized_heatmap(
 
 
 # ──────────────────────────────────────────────
+#  新增：冰箱框架布局图（食材名称+数量标注）
+# ──────────────────────────────────────────────
+
+
+def generate_fridge_layout_chart(
+    detections_df: pd.DataFrame,
+    image_shape: tuple[int, int] = (800, 1000),
+    shelf_ratios: tuple[float, float] = (0.33, 0.66),
+) -> np.ndarray:
+    """
+    生成冰箱内部框架布局图，在每个食材类别对应的位置标注名称和数量。
+
+    设计思路（替代热力图方案）：
+    - 绘制冰箱框架轮廓和搁板分隔线，模拟冰箱内部俯视布局
+    - 按类别统计各食材数量，计算平均位置
+    - 数量多的用偏红色，数量少的用偏绿色（绿→黄→橙→红渐变）
+    - 在每个类别的平均位置标注 "食材中文名 x N"
+
+    Input:
+        detections_df: DataFrame，需包含 center_x, center_y, class_name
+        image_shape: 输出图片尺寸 (height, width)
+        shelf_ratios: 搁板位置比例（相对于高度的百分比）
+
+    Output:
+        BGR 图像
+    """
+    if detections_df is None or detections_df.empty:
+        raise ValueError("Detections DataFrame is empty.")
+
+    height, width = image_shape[:2]
+    margin = 40
+
+    # 冰箱内框
+    fx1, fy1 = margin, margin
+    fx2, fy2 = width - margin, height - margin
+    fw = fx2 - fx1
+    fh = fy2 - fy1
+
+    # ── 1. 创建画布（深色背景） ──
+    canvas = np.zeros((height, width, 3), dtype=np.uint8)
+    # 背景：深灰蓝，模拟冰箱内壁
+    canvas[:] = (30, 35, 45)
+
+    # ── 2. 绘制冰箱外框 ──
+    cv2.rectangle(canvas, (fx1, fy1), (fx2, fy2), (60, 70, 85), 3, cv2.LINE_AA)
+    # 内框浅色填充
+    inner = canvas.copy()
+    cv2.rectangle(inner, (fx1, fy1), (fx2, fy2), (45, 50, 60), -1)
+    cv2.addWeighted(inner, 0.6, canvas, 0.4, 0, canvas)
+
+    # ── 3. 绘制搁板分隔线 ──
+    shelf_color = (80, 95, 115)
+    shelf_thickness = 6
+
+    shelves_y = []
+    for ratio in shelf_ratios:
+        sy = fy1 + int(fh * ratio)
+        shelves_y.append(sy)
+        # 搁板线（带一点发光效果）
+        cv2.line(canvas, (fx1 + 10, sy), (fx2 - 10, sy), shelf_color, shelf_thickness, cv2.LINE_AA)
+        # 高光线
+        cv2.line(canvas, (fx1 + 10, sy + 1), (fx2 - 10, sy + 1), (100, 115, 135), 2, cv2.LINE_AA)
+
+    # ── 4. 绘制区域分隔虚线（左/中/右） ──
+    for col_ratio in [0.33, 0.66]:
+        sx = fx1 + int(fw * col_ratio)
+        cv2.line(canvas, (sx, fy1 + 5), (sx, fy2 - 5), (55, 65, 80), 1, cv2.LINE_AA)
+
+    # ── 5. 区域标签（上层/中层/下层 + 左/中/右） ──
+    font_small = cv2.FONT_HERSHEY_SIMPLEX
+    zone_labels = ["上", "中", "下"]
+    for i, (zlabel, sy) in enumerate(zip(zone_labels, [fy1 + 20, shelves_y[0] + 20, shelves_y[1] + 20])):
+        # 左侧
+        cv2.putText(canvas, zlabel, (fx1 + 8, sy), font_small, 0.5, (70, 80, 100), 1, cv2.LINE_AA)
+
+    # ── 6. 按类别统计 ──
+    class_groups = detections_df.groupby("class_name").agg(
+        count=("class_name", "size"),
+        avg_cx=("center_x", "mean"),
+        avg_cy=("center_y", "mean"),
+    ).reset_index()
+
+    if class_groups.empty:
+        return canvas
+
+    # 计算数量范围用于颜色映射
+    min_count = class_groups["count"].min()
+    max_count = class_groups["count"].max()
+    count_range = max(max_count - min_count, 1)
+
+    # ── 7. 在每个类别的平均位置绘制标注 ──
+    # 用classes.yaml的中文名
+    import yaml
+    try:
+        from pathlib import Path
+        config_path = Path(__file__).resolve().parents[1] / "config" / "classes.yaml"
+        with open(config_path, "r", encoding="utf-8") as f:
+            classes_config = yaml.safe_load(f)
+        name_map = {item["name"]: item["label_zh"] for item in classes_config.get("classes", [])}
+    except Exception:
+        name_map = {}  # fallback to English names
+
+    font_large = cv2.FONT_HERSHEY_SIMPLEX
+
+    for _, row in class_groups.iterrows():
+        class_name = str(row["class_name"]).strip().lower()
+        count = int(row["count"])
+        avg_cx = int(round(float(row["avg_cx"])))
+        avg_cy = int(round(float(row["avg_cy"])))
+
+        # 中文名（回退到英文）
+        label_zh = name_map.get(class_name, class_name.capitalize())
+        text = f"{label_zh} x{count}"
+
+        # 根据数量确定颜色：绿 → 黄 → 橙 → 红
+        ratio = (count - min_count) / count_range
+        if ratio < 0.33:
+            # 绿 → 黄绿
+            r = int(120 + 135 * (ratio / 0.33))
+            g = 220
+            b = int(80 - 60 * (ratio / 0.33))
+        elif ratio < 0.66:
+            # 黄绿 → 橙
+            r = 255
+            g = int(220 - 120 * ((ratio - 0.33) / 0.33))
+            b = int(20 - 20 * ((ratio - 0.33) / 0.33))
+        else:
+            # 橙 → 红
+            r = 255
+            g = int(100 - 80 * ((ratio - 0.66) / 0.34))
+            b = int(0)
+
+        r = max(0, min(255, r))
+        g = max(0, min(255, g))
+        b = max(0, min(255, b))
+        text_color = (b, g, r)  # BGR
+
+        # 文字尺寸
+        (text_w, text_h), baseline = cv2.getTextSize(text, font_large, 0.7, 2)
+
+        # 标注框位置（确保在冰箱内部）
+        box_x = min(max(avg_cx - text_w // 2, fx1 + 5), fx2 - text_w - 5)
+        box_y = min(max(avg_cy - text_h // 2, fy1 + text_h + 10), fy2 - 10)
+
+        # 若超出冰箱范围，缩放到安全位置
+        box_x = max(fx1 + 5, min(box_x, fx2 - text_w - 5))
+        box_y = max(fy1 + text_h + 10, min(box_y, fy2 - 10))
+
+        # 半透明背景框
+        overlay = canvas.copy()
+        cv2.rectangle(
+            overlay,
+            (box_x - 8, box_y - text_h - 8),
+            (box_x + text_w + 8, box_y + 8),
+            (20, 25, 35),
+            -1,
+        )
+        cv2.addWeighted(overlay, 0.75, canvas, 0.25, 0, canvas)
+
+        # 边框（使用对应的颜色）
+        cv2.rectangle(
+            canvas,
+            (box_x - 8, box_y - text_h - 8),
+            (box_x + text_w + 8, box_y + 8),
+            text_color,
+            2,
+        )
+
+        # 文字
+        cv2.putText(
+            canvas,
+            text,
+            (box_x, box_y),
+            font_large,
+            0.7,
+            text_color,
+            2,
+            cv2.LINE_AA,
+        )
+
+    # ── 8. 底部信息 ──
+    total_items = len(detections_df)
+    info_text = f"冰箱食材分布  |  共 {total_items} 件食材  |  颜色越红 = 数量越多"
+    (info_w, info_h), _ = cv2.getTextSize(info_text, font_small, 0.45, 1)
+    cv2.putText(
+        canvas,
+        info_text,
+        ((width - info_w) // 2, height - 12),
+        font_small,
+        0.45,
+        (100, 110, 130),
+        1,
+        cv2.LINE_AA,
+    )
+
+    return canvas
+
+
+# ──────────────────────────────────────────────
 #  后续兼容：旧的独立热力图改名保留
 # ──────────────────────────────────────────────
 

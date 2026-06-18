@@ -18,7 +18,7 @@ if str(PROJECT_ROOT) not in sys.path:
 
 from app.core.detector import count_food, detect_food, detections_to_dataframe, load_model_from_weights  # noqa: E402
 from app.core.area_estimator import estimate_all_areas  # noqa: E402
-from app.core.heatmap_generator import generate_heatmap_overlay, generate_categorized_heatmap  # noqa: E402
+from app.core.heatmap_generator import generate_heatmap_overlay, generate_fridge_layout_chart  # noqa: E402
 from app.core.image_preprocess import (  # noqa: E402
     convert_gray,
     edge_detection,
@@ -270,13 +270,9 @@ def main():
     annotated_image = draw_detection_annotations(final_image, area_df) if not area_df.empty else final_image.copy()
     raw_detection_image = draw_raw_detections(detection_source, detections_df)
     heatmap_image = generate_heatmap_overlay(final_image, position_df)
-    categorized_heatmap = generate_categorized_heatmap(
-        position_df,
-        image_shape=final_image.shape[:2],
-        confidence_exponent=1.5,
-        blur_sigma=30,
-        draw_colorbar=True,
-        draw_labels=True,
+    fridge_layout = generate_fridge_layout_chart(
+        detections_df=position_df,
+        image_shape=(max(600, final_image.shape[1]), max(750, int(final_image.shape[0] * 1.2))),
     )
 
     LOGGER.info("Area estimation and position analysis completed.")
@@ -421,10 +417,10 @@ def main():
         close_panel()
 
         open_panel()
-        st.markdown("热辐射分区图（按食材类别着色）")
+        st.markdown("冰箱布局图（食材名称 + 数量分布）")
         st.image(
-            bgr_to_rgb(resize_image_keep_ratio(categorized_heatmap, max_width=MAX_DISPLAY_WIDTH)),
-            caption="分区热辐射图 — 红色=水果，绿色=蔬菜，蓝色=乳品/其他",
+            bgr_to_rgb(resize_image_keep_ratio(fridge_layout, max_width=MAX_DISPLAY_WIDTH)),
+            caption="冰箱框架布局图 — 颜色越红=数量越多，越绿=数量越少",
             use_column_width=True,
         )
         close_panel()
@@ -551,9 +547,9 @@ def main():
                 use_container_width=True,
             )
             st.download_button(
-                label="导出热辐射分区图（按食材类别）PNG",
-                data=encode_image_to_png_bytes(categorized_heatmap),
-                file_name="fridge_categorized_heatmap.png",
+                label="导出冰箱布局图（食材分布）PNG",
+                data=encode_image_to_png_bytes(fridge_layout),
+                file_name="fridge_layout_chart.png",
                 mime="image/png",
                 use_container_width=True,
             )
